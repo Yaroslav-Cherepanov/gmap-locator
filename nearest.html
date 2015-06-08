@@ -1,0 +1,16 @@
+{% extends 'map.html' %}
+
+{% block script %}
+  var closestMarkers = {'events':Markers['events'][0], 'projects':Markers['projects'][0], 'partners':Markers['partners'][0]};
+  bounds = new google.maps.LatLngBounds();
+  for (var x in closestMarkers) 
+    if (closestMarkers[x].getVisible())
+      bounds.extend(closestMarkers[x].getPosition());
+  map.fitBounds(bounds);
+{% endblock %}
+
+{% block button %}
+  <a class="btn btn-success" href="/all">
+    Show all locations
+  </a>
+{% endblock %}

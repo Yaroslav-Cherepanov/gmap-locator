@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+    <title>GMaps Locator</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+      input[type=checkbox] + label {
+        padding: 10px;
+        background-color: #d9edf7;
+        width: 90%;
+      }
+
+      input[type=checkbox]:checked + label {
+        background-color: #337ab7;
+        color: #fff;
+      }
+      
+      html {height: 100%;}
+      
+      body {
+        height:100%; 
+        margin: 0; 
+        padding: 0 
+      }
+      
+      //trick for full screen map 
+      #map_canvas { height: 500px; }
+
+      #wrapper { 
+        position: relative; 
+        height:100%; 
+      }
+      .panel { 
+        position: absolute; 
+        top: 10px; 
+        left: 10px; 
+        z-index: 99;
+      }
+    </style>
+    <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDWSUBKu53uR3YS07J1iG7Q4zQYlP-w1cA&sensor=True"></script>
+    <script type="text/javascript" src="/static/js/markerclusterer.js"></script>
+    <script type="text/javascript">
+
+      //Fill content in marker InfoWindow
+      function fillContent (markerType, item) {
+        if (markerType=='events')
+          return '<h3>Event</h3><br><b>Organization: </b>'+item['name_of_organization']+"<br><b>Address:</b> "+item['address']+"<br>"+"<b>Names:</b> "+item['training_names'];
+        if (markerType=='projects')
+          return '<h3>Project</h3><br><b>Partner: </b>'+item['partner']+"<br><b>Address:</b> "+item['address']+"<br>"+"<b>Names:</b> "+item['projects'];
+        if (markerType=='partners')
+          return '<h3>Partner</h3><br><b>Organization: </b>'+item['name_of_organization']+"<br><b>Address:</b> "+item['address'];
+      }
+
+      //Icon for marker of each type
+      function setIcon (markerType) {
+        if (markerType=='events')
+          return 'https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/32/Map-Marker-Marker-Outside-Pink.png';
+        if (markerType=='projects')
+          return 'https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/32/Map-Marker-Marker-Outside-Azure.png';
+        if (markerType=='partners')
+          return 'https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/32/Map-Marker-Marker-Outside-Chartreuse.png';
+      }
+
+      //Put markers of markerType on the map, define some properties 
+      function setMarkers (markerType) {
+        var markers = [];    
+        iconUrl = setIcon(markerType);
+        if (markerType=="events") ar={{locations.events|safe}}
+        else if (markerType=="projects") ar={{locations.projects|safe}}
+              else ar={{locations.partners|safe}}
+        ar.map(function(item) {
+          var image = {
+            url:setIcon(markerType),
+            scaledSize: new google.maps.Size(32,32)
+          };
+          var marker = new google.maps.Marker({
+            map: map,
+            position: {'lat':item['latitude'], 'lng':item['longitude']},
+            clickable: true,
+            icon: image
+          });
+          marker.setVisible(false);
+          var infoWindow = new google.maps.InfoWindow({
+            content: fillContent(markerType, item)
+          });
+          google.maps.event.addListener(marker, 'click', function() {
+            boundsBeforeClick = map.getBounds();
+            zoomBeforeClick = map.getZoom();
+            centerBeforeClick = map.getCenter();
+            infoWindow.open(map,marker);
+            map.setCenter(marker.getPosition());
+            map.setZoom(18);
+          });
+          google.maps.event.addListener(infoWindow,'closeclick',function(){
+            map.setZoom(zoomBeforeClick);
+            map.fitBounds(boundsBeforeClick);
+            map.setCenter(centerBeforeClick);
+          });
+            markers.push(marker);
+          });
+        return markers;
+      }
+      
+      //Change visibility of given markers
+      function processMarkers(markers) {
+        var condition = !markers[0].getVisible();
+        markers.map(function(item) {
+          item.setVisible(condition);
+        });
+        {% block script %}{% endblock %} 
+      }
+
+      //Initialization
+      function initialize() {
+        var mapOptions = {
+          center: new google.maps.LatLng(-34.397, 150.644),
+          zoom: 4,
+          mapTypeId: google.maps.MapTypeId.HYBRID
+        }
+        map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+        $("#map_canvas").css("height", $(window).height());
+
+        if (navigator.geolocation) {
+          // Browser supports geolocation
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var pos = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+            map.setCenter(pos);
+            var userMarker = new google.maps.Marker ({
+              map: map,
+              position: {'lat':position.coords.latitude, 'lng':position.coords.longitude},
+              clickable: true,
+              icon: 'https://cdn0.iconfinder.com/data/icons/BrushedMetalIcons_meBaze/64/Marker-02.png'
+            });
+            var infoWindow = new google.maps.InfoWindow ({
+              content: '<h3><b>You</b></h3>'
+            });
+            google.maps.event.addListener(userMarker, 'click', function() {
+              map.setCenter(userMarker.getPosition());
+              map.setZoom(18);
+              infoWindow.open(map,userMarker);
+            });
+            google.maps.event.addListener(infoWindow,'closeclick',function(){
+              map.setZoom(zoomBeforeClick);
+              map.fitBounds(boundsBeforeClick);
+              map.setCenter(centerBeforeClick);
+            });
+          });
+        } else {
+            // Browser doesn't support Geolocation
+            handleNoGeolocation(false);
+          }
+
+        //Put markers on the map  
+        Markers = {};
+        Markers['projects'] = setMarkers('projects');
+        Markers['partners'] = setMarkers('partners');
+        Markers['events'] = setMarkers('events');
+
+        //Add two inputs to the form
+        {% block form %}
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+              $("#nearestform").append($(document.createElement('input')).attr({name:'longitude',type:'number', value:position.coords.longitude}).hide());
+              $("#nearestform").append($(document.createElement('input')).attr({name:'latitude',type:'number', value:position.coords.latitude, checked: 'checked'}).hide());
+            });
+          }
+        {% endblock %}
+
+        //Change visibility of markers according to which checkboxes are checked
+        {% for x in ['events','projects', 'partners'] %}
+          {% if x not in locations.display %}
+            $("input[name='{{x}}']").prop('checked', false);
+            {% else %}
+              processMarkers(Markers['{{x}}']);
+          {% endif %}
+        {% endfor %}
+
+        //Collapsable panel
+        $('.panel-footer span.clickable').on("click", function (e) {
+          if (!$(this).hasClass('panel-collapsed')) {
+            $(this).parents('.panel').find('.panel-body').slideUp();
+            $(this).addClass('panel-collapsed');
+            $(this).find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+            console.log($(this).parents('.panel-footer'));
+            $(this).parents('.panel-footer').find("button[type='submit']").css("display", 'none');
+            $(this).parents('.panel-footer').find('label').html('<b>Menu</b>');
+          }
+          else {
+            $(this).parents('.panel').find('.panel-body').slideDown();
+            $(this).removeClass('panel-collapsed');
+            $(this).find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+            $(this).parents('.panel-footer').find("button[type='submit']").css("display", 'inline');
+            $(this).parents('.panel-footer').find('label').html('');
+          }
+        });
+      }
+    </script>
+  </head>
+  <body onload="initialize()">
+    <div id="wrapper">
+    <div id="map_canvas" style="width:100%;"></div>
+    <form id="nearestform" action="/nearest">
+      <div class="panel panel-primary" style="opacity: 0.8; margin-left: 100px; width:220px;">
+        <div class="panel-body">  
+          <ul class="row filtered_list selected_list" style="list-style-type: none;">
+            <li>
+              <input type="checkbox" name="partners" value="1" checked id="partner" style="display:none" onchange="processMarkers(Markers['partners'])"/>
+              <label for="partner">
+                <img src="https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/48/Map-Marker-Marker-Outside-Chartreuse.png"/>
+                    Partners
+              </label>
+            </li>
+            <li>
+              <input type="checkbox" name="projects" value="1" checked id="project" style="display:none" onchange="processMarkers(Markers['projects'])"/>
+              <label for="project">
+                <img src='https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/48/Map-Marker-Marker-Outside-Azure.png'/>
+                    Projects
+              </label>
+            </li>
+            <li>
+              <input type="checkbox" name="events" value="1" checked id="event" style="display:none" onchange="processMarkers(Markers['events'])"/>
+                <label for="event">
+                  <img src='https://cdn1.iconfinder.com/data/icons/Map-Markers-Icons-Demo-PNG/48/Map-Marker-Marker-Outside-Pink.png'/>
+                    Events
+                </label>
+            </li>
+          </ul>
+        </div>
+        <div class="panel-footer text-center">
+          <label></label>
+          <span class="pull-right clickable panel-collapsed" style="width:30px; height:30px;">
+            <i class="glyphicon glyphicon-chevron-up"></i>
+          </span>
+          {% block button %}
+          <button class="btn btn-primary" type="submit">
+              Show nearest
+          </button>
+          {% endblock %}
+      </div>
+    </div>
+    </form>
+      </div>
+  </body>
+</html>

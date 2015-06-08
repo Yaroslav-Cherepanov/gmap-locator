@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Upload</title>
+    <meta charset="utf-8">
+    <style></style>
+  </head>
+  <body>
+Необходимо загрузить .csv без хидеров с сепаратором вида ";", который содержит три колонки "id", "address", "Names", "Organization/Partners". 
+  	<form id="upload" enctype="multipart/form-data" method="post" action="/process">
+	   <label>Events: </label><input id="fileupload" name="events" type="file" /><br>
+	   <label>Projects: </label><input id="fileupload" name="projects" type="file" /><br>
+	   <label>Partners: </label><input id="fileupload" name="partners" type="file" /><br>
+	   <input type="submit" value="submit" id="submit" />
+	</form>
+На основной странице происходит визуализация точек, полученных из .csv файла. Так же отображается местоположение пользователя, можно показать только ближайшие события к нему.
+  </body>
+</html#
